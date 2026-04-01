@@ -2,6 +2,7 @@ import { Response } from 'express';
 import prisma from '../lib/prisma';
 import { sendSuccess, sendError } from '../utils/response';
 import { AuthRequest, PaginationQuery, ContractStatus } from '../types';
+import { logActivity } from '../utils/activityLog';
 
 export async function createContract(req: AuthRequest, res: Response): Promise<void> {
   const { title, description, clientName, clientEmail, value, currency, status, startDate, endDate, notes } = req.body;
@@ -23,6 +24,7 @@ export async function createContract(req: AuthRequest, res: Response): Promise<v
     include: { createdBy: { select: { id: true, firstName: true, lastName: true, email: true } } },
   });
 
+  await logActivity('CREATE', 'Contract', contract.id, contract.title, req.user!.userId, `${contract.createdBy.firstName} ${contract.createdBy.lastName}`);
   sendSuccess(res, contract, 'Contract created', 201);
 }
 
@@ -112,6 +114,7 @@ export async function updateContract(req: AuthRequest, res: Response): Promise<v
     include: { createdBy: { select: { id: true, firstName: true, lastName: true, email: true } } },
   });
 
+  await logActivity('UPDATE', 'Contract', contract.id, contract.title, req.user!.userId, `${contract.createdBy.firstName} ${contract.createdBy.lastName}`);
   sendSuccess(res, contract, 'Contract updated');
 }
 
@@ -127,14 +130,45 @@ export async function deleteContract(req: AuthRequest, res: Response): Promise<v
     return;
   }
 
+  await logActivity('DELETE', 'Contract', id, existing.title, req.user!.userId, req.user!.email);
   await prisma.contract.delete({ where: { id } });
   sendSuccess(res, null, 'Contract deleted');
+}
+
+export async function getMonthlyStats(req: AuthRequest, res: Response): Promise<void> {
+  const where = req.user!.role !== 'ADMIN' ? { createdById: req.user!.userId } : {};
+
+  const contracts = await prisma.contract.findMany({
+    where: { ...where, createdAt: { gte: new Date(new Date().getFullYear(), 0, 1) } },
+    select: { createdAt: true, value: true, status: true },
+  });
+
+  const months: Record<string, { month: string; count: number; value: number }> = {};
+  for (let m = 0; m < 12; m++) {
+    const key = `${new Date().getFullYear()}-${String(m + 1).padStart(2, '0')}`;
+    const label = new Date(new Date().getFullYear(), m, 1).toLocaleString('default', { month: 'short' });
+    months[key] = { month: label, count: 0, value: 0 };
+  }
+
+  for (const c of contracts) {
+    const d = new Date(c.createdAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (months[key]) {
+      months[key].count++;
+      months[key].value += c.value ?? 0;
+    }
+  }
+
+  sendSuccess(res, Object.values(months));
 }
 
 export async function getContractStats(req: AuthRequest, res: Response): Promise<void> {
   const where = req.user!.role !== 'ADMIN' ? { createdById: req.user!.userId } : {};
 
-  const [total, byStatus, totalValue] = await Promise.all([
+  const thirtyDaysFromNow = new Date();
+  thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+
+  const [total, byStatus, activeValue, totalValue, expiringSoon] = await Promise.all([
     prisma.contract.count({ where }),
     prisma.contract.groupBy({
       by: ['status'],
@@ -144,6 +178,17 @@ export async function getContractStats(req: AuthRequest, res: Response): Promise
     prisma.contract.aggregate({
       where: { ...where, status: 'ACTIVE' },
       _sum: { value: true },
+    }),
+    prisma.contract.aggregate({
+      where,
+      _sum: { value: true },
+    }),
+    prisma.contract.count({
+      where: {
+        ...where,
+        status: 'ACTIVE',
+        endDate: { gte: new Date(), lte: thirtyDaysFromNow },
+      },
     }),
   ]);
 
@@ -155,6 +200,8 @@ export async function getContractStats(req: AuthRequest, res: Response): Promise
   sendSuccess(res, {
     total,
     byStatus: statusCounts,
-    activeValue: totalValue._sum.value || 0,
+    activeValue: activeValue._sum.value || 0,
+    totalValue: totalValue._sum.value || 0,
+    expiringSoon,
   });
 }

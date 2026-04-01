@@ -33,6 +33,35 @@ export default function ContractsPage() {
     fetchContracts()
   }
 
+  const handleExportCSV = async () => {
+    const res = await contractsApi.list({ page: 1, limit: 1000, search: search || undefined, status: status || undefined })
+    const rows = res.data.data.contracts
+    const headers = ['Title', 'Client', 'Email', 'Value', 'Currency', 'Status', 'Start Date', 'End Date', 'Created At']
+    const csv = [
+      headers.join(','),
+      ...rows.map((c) =>
+        [
+          `"${c.title}"`,
+          `"${c.clientName}"`,
+          `"${c.clientEmail ?? ''}"`,
+          c.value ?? '',
+          c.currency,
+          c.status,
+          c.startDate ? new Date(c.startDate).toLocaleDateString() : '',
+          c.endDate ? new Date(c.endDate).toLocaleDateString() : '',
+          new Date(c.createdAt).toLocaleDateString(),
+        ].join(',')
+      ),
+    ].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `contracts-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this contract?')) return
     await contractsApi.delete(id)
@@ -45,12 +74,20 @@ export default function ContractsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Contracts</h1>
-        <Link
-          to="/contracts/new"
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          + New Contract
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExportCSV}
+            className="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            Export CSV
+          </button>
+          <Link
+            to="/contracts/new"
+            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            + New Contract
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -104,7 +141,9 @@ export default function ContractsPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {contracts.map((c) => (
                 <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{c.title}</td>
+                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                    <Link to={`/contracts/${c.id}`} className="hover:text-blue-600 transition-colors">{c.title}</Link>
+                  </td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{c.clientName}</td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
                     {c.value != null ? `$${c.value.toLocaleString()}` : '—'}

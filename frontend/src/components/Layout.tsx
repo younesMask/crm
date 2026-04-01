@@ -4,6 +4,7 @@ import { useTheme } from '../context/ThemeContext'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth()
+  const isAdmin = user?.role === 'ADMIN'
   const { theme, toggle } = useTheme()
   const navigate = useNavigate()
 
@@ -30,6 +31,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               Dashboard
             </NavLink>
+            {isAdmin && (
+              <NavLink
+                to="/users"
+                className={({ isActive }) =>
+                  `px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-blue-50 dark:bg-blue-950 text-blue-600'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`
+                }
+              >
+                Users
+              </NavLink>
+            )}
             <NavLink
               to="/contracts"
               className={({ isActive }) =>
@@ -41,6 +56,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               }
             >
               Contracts
+            </NavLink>
+            <NavLink
+              to="/clients"
+              className={({ isActive }) =>
+                `px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-blue-50 dark:bg-blue-950 text-blue-600'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`
+              }
+            >
+              Clients
+            </NavLink>
+            <NavLink
+              to="/activity"
+              className={({ isActive }) =>
+                `px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-blue-50 dark:bg-blue-950 text-blue-600'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`
+              }
+            >
+              Activity
             </NavLink>
           </nav>
         </div>

@@ -24,6 +24,7 @@ export interface Contract {
   endDate?: string
   signedAt?: string
   notes?: string
+  fileUrl?: string
   createdAt: string
   updatedAt: string
   createdBy: { id: string; firstName: string; lastName: string; email: string }
@@ -33,6 +34,8 @@ export interface ContractStats {
   total: number
   byStatus: Partial<Record<ContractStatus, number>>
   activeValue: number
+  totalValue: number
+  expiringSoon: number
 }
 
 export interface Pagination {

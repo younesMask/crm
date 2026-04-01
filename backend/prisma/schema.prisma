@@ -21,8 +21,25 @@ model User {
   updatedAt DateTime @updatedAt
 
   contracts Contract[]
+  clients   Client[]
 
   @@map("users")
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdBy   User   @relation(fields: [createdById], references: [id])
+  createdById String
+
+  @@map("clients")
 }
 
 model Contract {
@@ -46,4 +63,18 @@ model Contract {
   createdById String
 
   @@map("contracts")
+}
+
+// ActionType values: CREATE | UPDATE | DELETE
+model ActivityLog {
+  id           String   @id @default(cuid())
+  action       String
+  entityType   String
+  entityId     String
+  entityTitle  String
+  userId       String
+  userFullName String
+  createdAt    DateTime @default(now())
+
+  @@map("activity_logs")
 }

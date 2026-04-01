@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { contractsApi } from '../api/contracts'
 import { ContractStats, ContractStatus } from '../types'
 import { useAuth } from '../context/AuthContext'
@@ -17,16 +17,20 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [stats, setStats] = useState<ContractStats | null>(null)
+  const [monthly, setMonthly] = useState<{ month: string; count: number; value: number }[]>([])
 
   useEffect(() => {
     contractsApi.stats().then((res) => setStats(res.data.data))
+    contractsApi.monthlyStats().then((res) => setMonthly(res.data.data))
   }, [])
 
   const statCards = [
-    { label: 'Total Contracts', value: stats?.total ?? '—',           color: 'text-gray-900 dark:text-white', to: '/contracts' },
-    { label: 'Active',          value: stats?.byStatus?.ACTIVE ?? 0,  color: 'text-green-600',                to: '/contracts?status=ACTIVE' },
-    { label: 'Pending',         value: stats?.byStatus?.PENDING ?? 0, color: 'text-yellow-600',               to: '/contracts?status=PENDING' },
-    { label: 'Draft',           value: stats?.byStatus?.DRAFT ?? 0,   color: 'text-gray-500',                 to: '/contracts?status=DRAFT' },
+    { label: 'Total',     value: stats?.total ?? '—',                  color: 'text-gray-900 dark:text-white', to: '/contracts' },
+    { label: 'Active',    value: stats?.byStatus?.ACTIVE ?? 0,         color: 'text-green-600',                to: '/contracts?status=ACTIVE' },
+    { label: 'Pending',   value: stats?.byStatus?.PENDING ?? 0,        color: 'text-yellow-600',               to: '/contracts?status=PENDING' },
+    { label: 'Draft',     value: stats?.byStatus?.DRAFT ?? 0,          color: 'text-gray-500',                 to: '/contracts?status=DRAFT' },
+    { label: 'Expired',   value: stats?.byStatus?.EXPIRED ?? 0,        color: 'text-red-500',                  to: '/contracts?status=EXPIRED' },
+    { label: 'Cancelled', value: stats?.byStatus?.CANCELLED ?? 0,      color: 'text-gray-400',                 to: '/contracts?status=CANCELLED' },
   ]
 
   const chartData = (Object.keys(STATUS_CONFIG) as ContractStatus[])
@@ -42,7 +46,20 @@ export default function DashboardPage() {
         <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Here's your Universal Trades overview</p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      {stats && stats.expiringSoon > 0 && (
+        <Link
+          to="/contracts?status=ACTIVE"
+          className="flex items-center gap-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl px-5 py-3 mb-6 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors"
+        >
+          <span className="text-amber-500 text-lg">⚠️</span>
+          <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+            {stats.expiringSoon} active contract{stats.expiringSoon > 1 ? 's' : ''} expiring within 30 days
+          </p>
+          <span className="ml-auto text-xs text-amber-600 dark:text-amber-400">View →</span>
+        </Link>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
         {statCards.map((card) => (
           <Link
             key={card.label}
@@ -113,12 +130,40 @@ export default function DashboardPage() {
         </div>
 
         {/* Active value */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Active Contracts Value</p>
-          <p className="text-3xl font-bold text-blue-600">
-            ${stats?.activeValue?.toLocaleString() ?? '0'}
-          </p>
+        <div className="flex flex-col gap-4">
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Active Contracts Value</p>
+            <p className="text-2xl font-bold text-blue-600">
+              ${stats?.activeValue?.toLocaleString() ?? '0'}
+            </p>
+          </div>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Portfolio Value</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              ${stats?.totalValue?.toLocaleString() ?? '0'}
+            </p>
+          </div>
         </div>
+      </div>
+
+      {/* Monthly bar chart */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 mt-4">
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">Monthly Contracts — {new Date().getFullYear()}</p>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={monthly} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip
+              formatter={(value, name) => [
+                name === 'value' ? `$${Number(value).toLocaleString()}` : value,
+                name === 'value' ? 'Value' : 'Contracts',
+              ]}
+              contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px', fontSize: '12px' }}
+            />
+            <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} name="count" />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       <div className="mt-6">

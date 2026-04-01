@@ -7,8 +7,10 @@ import {
   updateContract,
   deleteContract,
   getContractStats,
+  getMonthlyStats,
 } from '../controllers/contract.controller';
 import { authenticate } from '../middleware/auth.middleware';
+import { upload } from '../middleware/upload.middleware';
 import { validate } from '../middleware/validate.middleware';
 
 const router = Router();
@@ -16,6 +18,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/stats', getContractStats);
+router.get('/stats/monthly', getMonthlyStats);
 
 router.get('/', getContracts);
 
@@ -52,5 +55,15 @@ router.put(
 );
 
 router.delete('/:id', deleteContract);
+
+router.post('/:id/upload', upload.single('file'), async (req, res) => {
+  const { id } = req.params;
+  if (!req.file) { res.status(400).json({ success: false, message: 'No file uploaded' }); return; }
+  const fileUrl = `/uploads/${req.file.filename}`;
+  const { sendSuccess } = await import('../utils/response');
+  const prisma = (await import('../lib/prisma')).default;
+  const contract = await prisma.contract.update({ where: { id }, data: { fileUrl } });
+  sendSuccess(res, contract, 'File uploaded');
+});
 
 export default router;

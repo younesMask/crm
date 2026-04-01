@@ -32,4 +32,13 @@ export const contractsApi = {
 
   stats: () =>
     client.get<{ data: ContractStats }>('/contracts/stats'),
+
+  monthlyStats: () =>
+    client.get<{ data: { month: string; count: number; value: number }[] }>('/contracts/stats/monthly'),
+
+  uploadFile: (id: string, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return client.post(`/contracts/${id}/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
 }

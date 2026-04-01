@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Role values: ADMIN | USER
+// ContractStatus values: DRAFT | PENDING | ACTIVE | EXPIRED | CANCELLED
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String
+  lastName  String
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contracts Contract[]
+
+  @@map("users")
+}
+
+model Contract {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  clientName  String
+  clientEmail String?
+  value       Float?
+  currency    String    @default("USD")
+  status      String    @default("DRAFT")
+  startDate   DateTime?
+  endDate     DateTime?
+  signedAt    DateTime?
+  fileUrl     String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  createdBy   User   @relation(fields: [createdById], references: [id])
+  createdById String
+
+  @@map("contracts")
+}

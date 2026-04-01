@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { contractsApi } from '../api/contracts'
 import { Contract, Pagination } from '../types'
 import StatusBadge from '../components/StatusBadge'
 
 export default function ContractsPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [contracts, setContracts] = useState<Contract[]>([])
   const [pagination, setPagination] = useState<Pagination | null>(null)
   const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('')
+  const [status, setStatus] = useState(() => searchParams.get('status') ?? '')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
 

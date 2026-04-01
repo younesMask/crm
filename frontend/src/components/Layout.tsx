@@ -16,7 +16,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col">
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-8">
-          <span className="text-xl font-bold text-blue-600">CRM</span>
+          <span className="text-xl font-bold text-blue-600">Universal Trades</span>
           <nav className="flex gap-1">
             <NavLink
               to="/dashboard"
